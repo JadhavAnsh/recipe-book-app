@@ -35,7 +35,10 @@
     "react-native-gesture-handler": "~2.24.0",
     "react-native-safe-area-context": "5.4.0",
     "react-native-screens": "~4.11.1",
-    "tamagui": "^1.125.8"
+    "tamagui": "^1.125.8",
+    "@expo/metro-runtime": "~5.0.4",
+    "react-native-web": "^0.20.0",
+    "react-dom": "19.0.0"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
