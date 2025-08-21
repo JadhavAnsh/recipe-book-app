@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ScrollView, Alert } from 'react-native';
+import { ScrollView, Alert, RefreshControl } from 'react-native';
 import {
   YStack,
   XStack,
@@ -36,7 +36,8 @@ export const AddRecipeScreen: React.FC = () => {
   const [prepTime, setPrepTime] = useState('');
   const [cookTime, setCookTime] = useState('');
   const [servings, setServings] = useState('');
-  const [difficulty, setDifficulty] = useState<'Easy' | 'Medium' | 'Hard'>('Easy');
+  const [refreshing, setRefreshing] = useState(false);
+  // Difficulty removed from backend; exclude from UI/state
 
   const addIngredient = () => {
     setIngredients([...ingredients, '']);
@@ -70,6 +71,11 @@ export const AddRecipeScreen: React.FC = () => {
     const newSteps = [...steps];
     newSteps[index] = value;
     setSteps(newSteps);
+  };
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    setTimeout(() => setRefreshing(false), 1000);
   };
 
   const handleSave = () => {
@@ -111,6 +117,9 @@ export const AddRecipeScreen: React.FC = () => {
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: theme.background.val }}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+      }
     >
       <YStack padding="$4" space="$6">
         {/* Header */}
@@ -245,25 +254,6 @@ export const AddRecipeScreen: React.FC = () => {
               fontSize="$4"
               color={theme.color.val}
             />
-            
-            <Button
-              flex={1}
-              backgroundColor={theme.background.val}
-              borderColor={theme.borderColor.val}
-              borderRadius="$4"
-              paddingHorizontal="$3"
-              paddingVertical="$2"
-              onPress={() => {
-                // Cycle through difficulties
-                if (difficulty === 'Easy') setDifficulty('Medium');
-                else if (difficulty === 'Medium') setDifficulty('Hard');
-                else setDifficulty('Easy');
-              }}
-            >
-              <Text fontSize="$4" color={theme.color.val}>
-                {difficulty}
-              </Text>
-            </Button>
           </XStack>
         </YStack>
 

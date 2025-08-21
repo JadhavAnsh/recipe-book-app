@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useColorScheme } from 'react-native';
-import { useTheme } from 'tamagui';
+import { useTheme, Theme } from 'tamagui';
 
 interface ThemeContextType {
   isDark: boolean;
@@ -39,7 +39,9 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   return (
     <ThemeContext.Provider value={value}>
-      {children}
+      <Theme name={isDark ? 'dark' : 'light'}>
+        {children}
+      </Theme>
     </ThemeContext.Provider>
   );
 };

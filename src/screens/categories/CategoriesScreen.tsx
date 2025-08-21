@@ -60,7 +60,10 @@ export const CategoriesScreen: React.FC = () => {
     : [];
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: theme.background.val }}>
+    <ScrollView
+      style={{ flex: 1, backgroundColor: theme.background.val }}
+      contentContainerStyle={{ paddingBottom: 24 }}
+    >
       <YStack padding="$4" space="$6">
         {/* Header */}
         <YStack space="$2">

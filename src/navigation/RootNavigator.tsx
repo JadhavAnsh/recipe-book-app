@@ -27,7 +27,7 @@ export const RootNavigator: React.FC = () => {
     config: {
       screens: {
         TabNavigator: 'tabs',
-        RecipeDetail: 'recipe/:id',
+        RecipeDetail: 'recipe/:recipeId',
         AddRecipe: 'add-recipe',
         Categories: 'category/:id',
       },
