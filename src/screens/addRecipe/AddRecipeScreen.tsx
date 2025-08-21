@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ScrollView, Alert, RefreshControl } from 'react-native';
+import { ScrollView, Alert, RefreshControl, Platform } from 'react-native';
 import {
   YStack,
   XStack,
@@ -10,6 +10,7 @@ import {
   H2,
   Card,
   Separator,
+  Select,
 } from 'tamagui';
 import { Plus, Minus, ArrowLeft, Save, Image as ImageIcon } from '@tamagui/lucide-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -37,7 +38,6 @@ export const AddRecipeScreen: React.FC = () => {
   const [cookTime, setCookTime] = useState('');
   const [servings, setServings] = useState('');
   const [refreshing, setRefreshing] = useState(false);
-  // Difficulty removed from backend; exclude from UI/state
 
   const addIngredient = () => {
     setIngredients([...ingredients, '']);
@@ -110,18 +110,12 @@ export const AddRecipeScreen: React.FC = () => {
     );
   };
 
-  const isValid = title.trim() && selectedCategory && 
-    ingredients.every(ing => ing.trim()) && 
+  const isValid = title.trim() && selectedCategory &&
+    ingredients.every(ing => ing.trim()) &&
     steps.every(step => step.trim());
 
-  return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: theme.background.val }}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
-      }
-    >
-      <YStack padding="$4" space="$6">
+  const Content = () => (
+    <YStack padding="$4" space="$6">
         {/* Header */}
         <XStack alignItems="center" space="$3">
           <Button
@@ -182,30 +176,28 @@ export const AddRecipeScreen: React.FC = () => {
             color={theme.color.val}
           />
 
-          <Button
-            backgroundColor={selectedCategory ? theme.background.val : theme.backgroundHover.val}
-            borderColor={theme.borderColor.val}
-            borderRadius="$4"
-            paddingHorizontal="$3"
-            paddingVertical="$2"
-            onPress={() => {
-              // Simple category selection - in a real app, you'd use a modal or picker
-              if (categories.length > 0) {
-                setSelectedCategory(categories[0].id);
-              }
-            }}
-          >
-            <Text
-              fontSize="$4"
-              color={selectedCategory ? theme.color.val : theme.color.val}
-              opacity={selectedCategory ? 1 : 0.7}
+          <Select native={Platform.OS === 'web'} value={selectedCategory} onValueChange={setSelectedCategory}>
+            <Select.Trigger
+              backgroundColor={theme.backgroundHover.val}
+              borderColor={theme.borderColor.val}
+              borderRadius="$4"
+              paddingHorizontal="$3"
+              paddingVertical="$2"
             >
-              {selectedCategory 
-                ? categories.find(c => c.id === selectedCategory)?.name || 'Select Category'
-                : 'Select Category'
-              }
-            </Text>
-          </Button>
+              <Select.Value placeholder="Select Category" />
+            </Select.Trigger>
+            {Platform.OS !== 'web' && (
+              <Select.Content>
+                <Select.Viewport>
+                  {categories.map((cat, index) => (
+                    <Select.Item key={cat.id} value={cat.id} index={index}>
+                      <Select.ItemText>{cat.name}</Select.ItemText>
+                    </Select.Item>
+                  ))}
+                </Select.Viewport>
+              </Select.Content>
+            )}
+          </Select>
 
           <XStack space="$3">
             <Input
@@ -404,6 +396,27 @@ export const AddRecipeScreen: React.FC = () => {
           Save Recipe
         </Button>
       </YStack>
+  );
+
+  if (Platform.OS === 'web') {
+    return (
+      <YStack height="100vh" overflow="scroll" backgroundColor={theme.background.val}>
+        <Content />
+      </YStack>
+    );
+  }
+
+  return (
+    <ScrollView
+      style={{ flex: 1, backgroundColor: theme.background.val }}
+      contentContainerStyle={{ paddingBottom: 80, flexGrow: 1 }}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+      }
+    >
+      <Content />
     </ScrollView>
   );
 };

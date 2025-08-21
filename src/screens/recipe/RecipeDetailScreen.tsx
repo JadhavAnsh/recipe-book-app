@@ -1,30 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Alert } from 'react-native';
-import { ScrollView, RefreshControl } from 'react-native';
-import {
-  YStack,
-  XStack,
-  Text,
-  Input,
-  Button,
-  H1,
-  H2,
-  H3,
-  Card,
-  Image,
-  Separator,
-} from 'tamagui';
+import { Alert, ScrollView, RefreshControl, Platform } from 'react-native';
+import { YStack, XStack, Text, Input, Button, H1, H2, H3, Card, Image, Separator } from 'tamagui';
 import { Heart, Clock, Users, Star, Plus, ArrowLeft } from '@tamagui/lucide-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from 'tamagui';
 import { NoteCard } from '../../components/recipe/NoteCard';
 import { EmptyState } from '../../components/common/EmptyState';
-import {
-  recipes,
-  getNotesByRecipe,
-  addNote,
-  toggleFavorite,
-} from '../../utils/dummyData';
+import { recipes, getNotesByRecipe, addNote, toggleFavorite } from '../../utils/dummyData';
 
 type RouteParams = {
   recipeId: string;
@@ -45,10 +27,10 @@ export const RecipeDetailScreen: React.FC = () => {
   const theme = useTheme();
   const params = (route.params || {}) as Partial<RouteParams> & { id?: string };
   const recipeId = params.recipeId || params.id || '1';
-  
+
   const [newNote, setNewNote] = useState('');
   const [notes, setNotes] = useState(getNotesByRecipe(recipeId));
-  const [recipe, setRecipe] = useState(recipes.find(r => r.id === recipeId));
+  const [recipe, setRecipe] = useState(recipes.find((r) => r.id === recipeId));
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
@@ -71,21 +53,17 @@ export const RecipeDetailScreen: React.FC = () => {
   };
 
   const handleDeleteNote = (noteId: string) => {
-    Alert.alert(
-      'Delete Note',
-      'Are you sure you want to delete this note?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => {
-            const updatedNotes = notes.filter(note => note.id !== noteId);
-            setNotes(updatedNotes);
-          },
+    Alert.alert('Delete Note', 'Are you sure you want to delete this note?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => {
+          const updatedNotes = notes.filter((note) => note.id !== noteId);
+          setNotes(updatedNotes);
         },
-      ]
-    );
+      },
+    ]);
   };
 
   const handleRefresh = () => {
@@ -100,21 +78,11 @@ export const RecipeDetailScreen: React.FC = () => {
 
   // Difficulty has been removed from backend; no color mapping needed
 
-  return (
-    <ScrollView
-    style={{ flex: 1, backgroundColor: theme.background.val }}
-    refreshControl={
-      <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
-    }
-  >
+  const Content = () => (
+    <>
       {/* Header Image Container */}
       <YStack position="relative">
-        <Image
-          source={{ uri: recipe.image }}
-          width="100%"
-          height={300}
-          resizeMode="cover"
-        />
+        <Image source={{ uri: recipe.image }} width="100%" height={300} resizeMode="cover" />
 
         {/* Back Button Overlay */}
         <Button
@@ -130,8 +98,7 @@ export const RecipeDetailScreen: React.FC = () => {
             backgroundColor: 'rgba(0,0,0,0.5)',
           }}
           animation="quick"
-          zIndex={10}
-        >
+          zIndex={10}>
           <ArrowLeft size={24} color="white" />
         </Button>
 
@@ -149,8 +116,7 @@ export const RecipeDetailScreen: React.FC = () => {
             backgroundColor: 'rgba(0,0,0,0.5)',
           }}
           animation="quick"
-          zIndex={10}
-        >
+          zIndex={10}>
           <Heart
             size={24}
             fill={recipe.isFavorite ? theme.red10.val : 'transparent'}
@@ -164,7 +130,7 @@ export const RecipeDetailScreen: React.FC = () => {
         {/* Recipe Header */}
         <YStack space="$2">
           <H1 color={theme.color.val}>{recipe.title}</H1>
-          
+
           <XStack alignItems="center" space="$3">
             <Text fontSize="$4" color={theme.color.val} opacity={0.7}>
               {recipe.category}
@@ -197,7 +163,7 @@ export const RecipeDetailScreen: React.FC = () => {
           <H2 fontSize="$6" color={theme.color.val}>
             Ingredients
           </H2>
-          
+
           <YStack space="$2">
             {recipe.ingredients.map((ingredient, index) => (
               <XStack key={index} alignItems="center" space="$2">
@@ -219,8 +185,8 @@ export const RecipeDetailScreen: React.FC = () => {
           <H2 fontSize="$6" color={theme.color.val}>
             Instructions
           </H2>
-          
-          <YStack space="$3">
+
+        <YStack space="$3">
             {recipe.steps.map((step, index) => (
               <Card
                 key={index}
@@ -229,16 +195,10 @@ export const RecipeDetailScreen: React.FC = () => {
                 bordered
                 borderRadius="$4"
                 backgroundColor={theme.backgroundHover.val}
-                borderColor={theme.borderColor.val}
-              >
+                borderColor={theme.borderColor.val}>
                 <Card.Header padded>
                   <XStack space="$3" alignItems="flex-start">
-                    <Text
-                      fontSize="$4"
-                      fontWeight="bold"
-                      color={theme.blue10.val}
-                      minWidth={30}
-                    >
+                    <Text fontSize="$4" fontWeight="bold" color={theme.blue10.val} minWidth={30}>
                       {index + 1}
                     </Text>
                     <Text fontSize="$4" color={theme.color.val} flex={1}>
@@ -258,7 +218,7 @@ export const RecipeDetailScreen: React.FC = () => {
           <H2 fontSize="$6" color={theme.color.val}>
             Notes
           </H2>
-          
+
           {notes.length === 0 ? (
             <EmptyState
               title="No notes yet"
@@ -268,11 +228,7 @@ export const RecipeDetailScreen: React.FC = () => {
           ) : (
             <YStack padding="$3">
               {notes.map((note) => (
-                <NoteCard
-                  key={note.id}
-                  note={note}
-                  onDelete={handleDeleteNote}
-                />
+                <NoteCard key={note.id} note={note} onDelete={handleDeleteNote} />
               ))}
             </YStack>
           )}
@@ -284,8 +240,7 @@ export const RecipeDetailScreen: React.FC = () => {
             bordered
             borderRadius="$4"
             backgroundColor={theme.background.val}
-            borderColor={theme.borderColor.val}
-          >
+            borderColor={theme.borderColor.val}>
             <Card.Header padded>
               <YStack padding="$3">
                 <Input
@@ -302,7 +257,7 @@ export const RecipeDetailScreen: React.FC = () => {
                   multiline
                   numberOfLines={3}
                 />
-                
+
                 <Button
                   backgroundColor={theme.blue10.val}
                   color="white"
@@ -315,8 +270,7 @@ export const RecipeDetailScreen: React.FC = () => {
                     scale: 0.95,
                     backgroundColor: theme.blue9.val,
                   }}
-                  animation="quick"
-                >
+                  animation="quick">
                   <Plus size={16} color="white" marginRight="$2" />
                   Add Note
                 </Button>
@@ -325,6 +279,24 @@ export const RecipeDetailScreen: React.FC = () => {
           </Card>
         </YStack>
       </YStack>
+    </>
+  );
+
+  if (Platform.OS === 'web') {
+    return (
+      <YStack height="100vh" overflow="scroll" backgroundColor={theme.background.val}>
+        <Content />
+      </YStack>
+    );
+  }
+
+  return (
+    <ScrollView
+      style={{ flex: 1, backgroundColor: theme.background.val }}
+      contentContainerStyle={{ paddingBottom: 80, flexGrow: 1 }}
+      scrollEnabled
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}>
+      <Content />
     </ScrollView>
   );
 };

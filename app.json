@@ -45,6 +45,7 @@
       "package": "com.jadhavansh.recipebookapp"
     },
     "extra": {
+      "apiBaseUrl": "https://recipe-book-app-backend.onrender.com",
       "eas": {
         "projectId": "6c400d41-cdf0-421d-a4f6-01fa6243486d"
       }
