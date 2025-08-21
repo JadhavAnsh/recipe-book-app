@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { ScrollView, RefreshControl } from 'react-native';
+import { ScrollView } from 'react-native';
 import {
   YStack,
   XStack,
@@ -16,11 +16,13 @@ import { RecipeCard } from '../../components/recipe/RecipeCard';
 import { CategoryCard } from '../../components/recipe/CategoryCard';
 import { EmptyState } from '../../components/common/EmptyState';
 import {
-  recipes,
   categories,
   getRecipesByCategory,
-  toggleFavorite,
+  Recipe as UIRecipe,
 } from '../../utils/dummyData';
+import { useQuery } from '@apollo/client';
+import { RECIPES_QUERY } from '../../services/api/recipes';
+import { useDebouncedValue } from '~/utils/useDebouncedValue';
 
 type RootStackParamList = {
   RecipeDetail: { recipeId: string };
@@ -36,30 +38,62 @@ export const HomeScreen: React.FC = () => {
   const theme = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [refreshing, setRefreshing] = useState(false);
+  const [refreshTick, setRefreshTick] = useState(0);
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
+
+  const { data, loading } = useQuery(RECIPES_QUERY);
+  const apiRecipes = (data?.recipes ?? []) as Array<{
+    id: string;
+    title: string;
+    category: string;
+    categoryId?: string | null;
+    image?: string | null;
+    ingredients: string[];
+    steps: string[];
+    prepTime: number;
+    cookTime: number;
+    servings: number;
+  }>;
+
+  const uiRecipes: UIRecipe[] = useMemo(() => {
+    return apiRecipes.map((r) => ({
+      id: r.id,
+      title: r.title,
+      category: r.category,
+      categoryId: r.categoryId || '',
+      image: r.image || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop',
+      ingredients: r.ingredients,
+      steps: r.steps,
+      prepTime: r.prepTime,
+      cookTime: r.cookTime,
+      servings: r.servings,
+      difficulty: 'Easy',
+      isFavorite: favoriteIds.has(r.id),
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiRecipes, favoriteIds, refreshTick]);
+
+  const debouncedSearch = useDebouncedValue(searchQuery, 200);
 
   const filteredRecipes = useMemo(() => {
-    let filtered = recipes;
+    let filtered = uiRecipes;
     
     if (selectedCategory) {
-      filtered = getRecipesByCategory(selectedCategory);
+      // Filter by category id when provided
+      filtered = filtered.filter((r) => r.categoryId === selectedCategory);
     }
     
-    if (searchQuery.trim()) {
+    if (debouncedSearch.trim()) {
       filtered = filtered.filter(recipe =>
-        recipe.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        recipe.category.toLowerCase().includes(searchQuery.toLowerCase())
+        recipe.title.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+        recipe.category.toLowerCase().includes(debouncedSearch.toLowerCase())
       );
     }
     
     return filtered;
-  }, [searchQuery, selectedCategory]);
+  }, [debouncedSearch, selectedCategory, uiRecipes]);
 
-  const handleRefresh = () => {
-    setRefreshing(true);
-    // Simulate refresh
-    setTimeout(() => setRefreshing(false), 1000);
-  };
+  // Pull-to-refresh removed; keep a manual tick to force re-render when needed
 
   const handleRecipePress = (recipeId: string) => {
     navigation.navigate('RecipeDetail', { recipeId });
@@ -78,18 +112,17 @@ export const HomeScreen: React.FC = () => {
   };
 
   const handleFavoriteToggle = (recipeId: string) => {
-    toggleFavorite(recipeId);
-    // Force re-render
-    setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 100);
+    setFavoriteIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(recipeId)) next.delete(recipeId); else next.add(recipeId);
+      return next;
+    });
+    setRefreshTick((t) => t + 1);
   };
 
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: theme.background.val }}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
-      }
     >
       <YStack padding="$4" space="$6">
         {/* Header */}
@@ -187,7 +220,9 @@ export const HomeScreen: React.FC = () => {
             )}
           </XStack>
 
-          {filteredRecipes.length === 0 ? (
+          {loading ? (
+            <Text color={theme.color.val}>Loading recipes...</Text>
+          ) : filteredRecipes.length === 0 ? (
             <EmptyState
               title="No recipes found"
               message={

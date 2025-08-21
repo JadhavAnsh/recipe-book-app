@@ -1,11 +1,17 @@
 import React from 'react';
 import { Card, YStack, XStack, Text, Button } from 'tamagui';
 import { Star, Clock, Trash2 } from '@tamagui/lucide-icons';
-import { Note } from '../../utils/dummyData';
 import { useTheme } from 'tamagui';
 
+type NoteView = {
+  id: string;
+  content: string;
+  timestamp?: Date | string;
+  isImportant?: boolean;
+};
+
 interface NoteCardProps {
-  note: Note;
+  note: NoteView;
   onDelete?: (noteId: string) => void;
 }
 
@@ -15,13 +21,15 @@ export const NoteCard: React.FC<NoteCardProps> = ({
 }) => {
   const theme = useTheme();
 
-  const formatDate = (date: Date) => {
+  const formatDate = (date?: Date | string) => {
+    if (!date) return '';
+    const d = typeof date === 'string' ? new Date(date) : date;
     return new Intl.DateTimeFormat('en-US', {
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
-    }).format(date);
+    }).format(d);
   };
 
   return (

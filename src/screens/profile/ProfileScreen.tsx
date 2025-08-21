@@ -214,42 +214,6 @@ export const ProfileScreen: React.FC = () => {
             </YStack>
           </Card.Header>
         </Card>
-
-        {/* Coming Soon Features */}
-        <Card
-          elevate
-          size="$4"
-          bordered
-          borderRadius="$6"
-          backgroundColor={theme.background.val}
-          borderColor={theme.borderColor.val}
-        >
-          <Card.Header padded>
-            <YStack space="$3">
-              <H2 fontSize="$6" color={theme.color.val}>
-                Coming Soon
-              </H2>
-              
-              <YStack space="$2">
-                <Text fontSize="$4" color={theme.color.val}>
-                  🖼️ Recipe Image Upload
-                </Text>
-                <Text fontSize="$4" color={theme.color.val}>
-                  📱 Cloud Sync
-                </Text>
-                <Text fontSize="$4" color={theme.color.val}>
-                  🍳 Cooking Timer
-                </Text>
-                <Text fontSize="$4" color={theme.color.val}>
-                  📊 Nutritional Information
-                </Text>
-                <Text fontSize="$4" color={theme.color.val}>
-                  🌍 Recipe Sharing
-                </Text>
-              </YStack>
-            </YStack>
-          </Card.Header>
-        </Card>
       </YStack>
     </ScrollView>
   );

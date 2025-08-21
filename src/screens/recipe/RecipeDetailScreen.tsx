@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Alert, ScrollView, RefreshControl, Platform } from 'react-native';
+import { Alert, ScrollView, Platform } from 'react-native';
 import { YStack, XStack, Text, Input, Button, H1, H2, H3, Card, Image, Separator } from 'tamagui';
 import { Heart, Clock, Users, Star, Plus, ArrowLeft } from '@tamagui/lucide-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from 'tamagui';
 import { NoteCard } from '../../components/recipe/NoteCard';
 import { EmptyState } from '../../components/common/EmptyState';
-import { recipes, getNotesByRecipe, addNote, toggleFavorite, updateNote } from '../../utils/dummyData';
+import { toggleFavorite } from '../../utils/dummyData';
+import { useNotesByRecipe, useCreateNote, useUpdateNote, useDeleteNote, NoteDto } from '../../hooks/useNotes';
+import { useQuery } from '@apollo/client';
+import { RECIPE_QUERY } from '../../services/api/recipes';
 
 type RouteParams = {
   recipeId: string;
@@ -29,46 +32,66 @@ export const RecipeDetailScreen: React.FC = () => {
   const recipeId = params.recipeId || params.id || '1';
 
   const [newNote, setNewNote] = useState('');
-  const [notes, setNotes] = useState(getNotesByRecipe(recipeId));
-  const [recipe, setRecipe] = useState(recipes.find((r) => r.id === recipeId));
-  const [refreshing, setRefreshing] = useState(false);
+  const { data, loading } = useQuery(RECIPE_QUERY, { variables: { id: recipeId } });
+  const recipe = data?.recipe ? {
+    id: data.recipe.id,
+    title: data.recipe.title,
+    category: data.recipe.category,
+    categoryId: data.recipe.categoryId || '',
+    image: data.recipe.image || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop',
+    ingredients: data.recipe.ingredients,
+    steps: data.recipe.steps,
+    prepTime: data.recipe.prepTime,
+    cookTime: data.recipe.cookTime,
+    servings: data.recipe.servings,
+    difficulty: 'Easy' as const,
+    isFavorite: false,
+  } : undefined;
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [editingNoteContent, setEditingNoteContent] = useState('');
 
+  const { data: notesData = [], isLoading: notesLoading, refetch } = useNotesByRecipe(recipeId);
+  const createNoteMutation = useCreateNote(recipeId);
+  const updateNoteMutation = useUpdateNote(recipeId);
+  const deleteNoteMutation = useDeleteNote(recipeId);
+
   useEffect(() => {
-    if (!recipe) {
+    if (!loading && !recipe) {
       Alert.alert('Error', 'Recipe not found');
       navigation.goBack();
     }
-  }, [recipe, navigation]);
+  }, [recipe, loading, navigation]);
 
   if (!recipe) {
     return null;
   }
 
-  const handleAddNote = () => {
-    if (newNote.trim()) {
-      const addedNote = addNote(recipeId, newNote.trim());
-      setNotes([...notes, addedNote]);
+  const handleAddNote = async () => {
+    if (!newNote.trim()) return;
+    try {
+      await createNoteMutation.mutateAsync(newNote.trim());
       setNewNote('');
+    } catch (e) {
+      Alert.alert('Error', (e as Error).message);
     }
   };
 
   const handleStartEditNote = (noteId: string) => {
-    const n = notes.find(n => n.id === noteId);
+    const n = notesData.find((n: NoteDto) => n.id === noteId);
     if (!n) return;
     setEditingNoteId(noteId);
-    setEditingNoteContent(n.content);
+    setEditingNoteContent(n.text);
   };
 
-  const handleSaveEditNote = () => {
+  const handleSaveEditNote = async () => {
     if (!editingNoteId) return;
-    const updated = updateNote(editingNoteId, editingNoteContent.trim());
-    if (updated) {
-      setNotes(notes.map(n => (n.id === updated.id ? updated : n)));
+    try {
+      await updateNoteMutation.mutateAsync({ id: editingNoteId, text: editingNoteContent.trim() });
+      setEditingNoteId(null);
+      setEditingNoteContent('');
+    } catch (e) {
+      Alert.alert('Error', (e as Error).message);
     }
-    setEditingNoteId(null);
-    setEditingNoteContent('');
   };
 
   const handleDeleteNote = (noteId: string) => {
@@ -77,22 +100,20 @@ export const RecipeDetailScreen: React.FC = () => {
       {
         text: 'Delete',
         style: 'destructive',
-        onPress: () => {
-          const updatedNotes = notes.filter((note) => note.id !== noteId);
-          setNotes(updatedNotes);
+        onPress: async () => {
+          try {
+            await deleteNoteMutation.mutateAsync(noteId);
+          } catch (e) {
+            Alert.alert('Error', (e as Error).message);
+          }
         },
       },
     ]);
   };
 
-  const handleRefresh = () => {
-    setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1000);
-  };
 
   const handleFavoriteToggle = () => {
     toggleFavorite(recipeId);
-    setRecipe({ ...recipe, isFavorite: !recipe.isFavorite });
   };
 
   // Difficulty has been removed from backend; no color mapping needed
@@ -184,7 +205,7 @@ export const RecipeDetailScreen: React.FC = () => {
           </H2>
 
           <YStack space="$2">
-            {recipe.ingredients.map((ingredient, index) => (
+            {recipe.ingredients.map((ingredient: string, index: number) => (
               <XStack key={index} alignItems="center" space="$2">
                 <Text fontSize="$3" color={theme.color.val} opacity={0.5}>
                   •
@@ -206,7 +227,7 @@ export const RecipeDetailScreen: React.FC = () => {
           </H2>
 
         <YStack space="$3">
-            {recipe.steps.map((step, index) => (
+            {recipe.steps.map((step: string, index: number) => (
               <Card
                 key={index}
                 elevate
@@ -238,7 +259,9 @@ export const RecipeDetailScreen: React.FC = () => {
             Notes
           </H2>
 
-          {notes.length === 0 ? (
+          {notesLoading ? (
+            <Text color={theme.color.val}>Loading notes...</Text>
+          ) : notesData.length === 0 ? (
             <EmptyState
               title="No notes yet"
               message="Add your first note below to remember tips and modifications for this recipe!"
@@ -246,7 +269,7 @@ export const RecipeDetailScreen: React.FC = () => {
             />
           ) : (
             <YStack padding="$3">
-              {notes.map((note) => (
+              {notesData.map((note: NoteDto) => (
                 <YStack key={note.id} space="$2">
                   {editingNoteId === note.id ? (
                     <YStack space="$2">
@@ -262,7 +285,7 @@ export const RecipeDetailScreen: React.FC = () => {
                       </XStack>
                     </YStack>
                   ) : (
-                    <NoteCard note={note} onDelete={handleDeleteNote} />
+                    <NoteCard note={{ id: note.id, content: note.text, timestamp: note.updatedAt || note.createdAt }} onDelete={handleDeleteNote} />
                   )}
                   {editingNoteId !== note.id && (
                     <XStack>
@@ -336,7 +359,7 @@ export const RecipeDetailScreen: React.FC = () => {
       style={{ flex: 1, backgroundColor: theme.background.val }}
       contentContainerStyle={{ paddingBottom: 80, flexGrow: 1 }}
       scrollEnabled
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}>
+    >
       <Content />
     </ScrollView>
   );

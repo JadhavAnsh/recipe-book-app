@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { ScrollView, Alert, RefreshControl, Platform } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { ScrollView, Alert, Platform } from 'react-native';
 import {
   YStack,
   XStack,
@@ -15,7 +15,9 @@ import {
 import { Plus, Minus, ArrowLeft, Save, Image as ImageIcon } from '@tamagui/lucide-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from 'tamagui';
-import { categories, getRecipeById, addRecipe, updateRecipe, deleteRecipe } from '../../utils/dummyData';
+import { categories, getRecipeById } from '../../utils/dummyData';
+import { useMutation, useQuery } from '@apollo/client';
+import { CREATE_RECIPE_MUTATION, UPDATE_RECIPE_MUTATION, DELETE_RECIPE_MUTATION, RECIPE_QUERY } from '../../services/api/recipes';
 
 type RootStackParamList = {
   Home: undefined;
@@ -40,23 +42,28 @@ export const AddRecipeScreen: React.FC = () => {
   const [prepTime, setPrepTime] = useState('');
   const [cookTime, setCookTime] = useState('');
   const [servings, setServings] = useState('');
-  const [refreshing, setRefreshing] = useState(false);
+  // Pull-to-refresh removed per requirement
 
   const isEditing = !!recipeId;
 
+  const { data: existingRecipeData } = useQuery(RECIPE_QUERY, { skip: !isEditing, variables: { id: recipeId! } });
+
+  // Prevent fetched data from overwriting user edits once inputs are touched
+  const hasHydratedRef = useRef(false);
   React.useEffect(() => {
-    if (!isEditing) return;
-    const recipe = getRecipeById(recipeId!);
-    if (recipe) {
-      setTitle(recipe.title);
-      setSelectedCategory(recipe.categoryId);
-      setIngredients(recipe.ingredients);
-      setSteps(recipe.steps);
-      setPrepTime(String(recipe.prepTime));
-      setCookTime(String(recipe.cookTime));
-      setServings(String(recipe.servings));
+    if (!isEditing || hasHydratedRef.current) return;
+    const r = existingRecipeData?.recipe;
+    if (r) {
+      setTitle((prev) => (prev ? prev : r.title));
+      setSelectedCategory((prev) => (prev ? prev : r.categoryId || ''));
+      setIngredients((prev) => (prev && prev.some((v) => v) ? prev : r.ingredients || ['']));
+      setSteps((prev) => (prev && prev.some((v) => v) ? prev : r.steps || ['']));
+      setPrepTime((prev) => (prev ? prev : String(r.prepTime ?? '')));
+      setCookTime((prev) => (prev ? prev : String(r.cookTime ?? '')));
+      setServings((prev) => (prev ? prev : String(r.servings ?? '')));
+      hasHydratedRef.current = true;
     }
-  }, [isEditing, recipeId]);
+  }, [isEditing, recipeId, existingRecipeData]);
 
   const addIngredient = () => {
     setIngredients([...ingredients, '']);
@@ -92,12 +99,17 @@ export const AddRecipeScreen: React.FC = () => {
     setSteps(newSteps);
   };
 
-  const handleRefresh = () => {
-    setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1000);
-  };
+  // No refresh handler
 
-  const handleSave = () => {
+  const [createRecipe] = useMutation(CREATE_RECIPE_MUTATION, {
+    update(cache, { data }) {
+      // Easiest path: refetch queries on screens; skipping cache write for brevity
+    },
+  });
+  const [updateRecipeMutation] = useMutation(UPDATE_RECIPE_MUTATION);
+  const [deleteRecipeMutation] = useMutation(DELETE_RECIPE_MUTATION);
+
+  const handleSave = async () => {
     // Validate form
     if (!title.trim()) {
       Alert.alert('Error', 'Please enter a recipe title');
@@ -118,6 +130,8 @@ export const AddRecipeScreen: React.FC = () => {
 
     const payload = {
       title: title.trim(),
+      // Backend requires 'category' (name). We'll derive from categories list using categoryId.
+      category: categories.find(c => c.id === selectedCategory)?.name || '',
       categoryId: selectedCategory,
       image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop',
       ingredients: ingredients.map(i => i.trim()),
@@ -125,25 +139,28 @@ export const AddRecipeScreen: React.FC = () => {
       prepTime: parseInt(prepTime || '0', 10) || 0,
       cookTime: parseInt(cookTime || '0', 10) || 0,
       servings: parseInt(servings || '0', 10) || 0,
-      difficulty: 'Easy' as const,
     };
 
-    if (isEditing) {
-      updateRecipe(recipeId!, payload);
-    } else {
-      addRecipe(payload);
-    }
+    try {
+      if (isEditing) {
+        await updateRecipeMutation({ variables: { input: { id: recipeId!, ...payload } } });
+      } else {
+        await createRecipe({ variables: { input: payload } });
+      }
 
-    Alert.alert(
-      'Success!',
-      isEditing ? 'Recipe updated successfully!' : 'Recipe added successfully!',
-      [
-        {
-          text: 'OK',
-          onPress: () => navigation.navigate('Home'),
-        },
-      ]
-    );
+      Alert.alert(
+        'Success!',
+        isEditing ? 'Recipe updated successfully!' : 'Recipe added successfully!',
+        [
+          {
+            text: 'OK',
+            onPress: () => navigation.navigate('Home'),
+          },
+        ]
+      );
+    } catch (e) {
+      Alert.alert('Error', (e as Error).message);
+    }
   };
 
   const isValid = title.trim() && selectedCategory &&
@@ -466,7 +483,7 @@ export const AddRecipeScreen: React.FC = () => {
             onPress={() => {
               Alert.alert('Delete Recipe', 'Are you sure you want to delete this recipe?', [
                 { text: 'Cancel', style: 'cancel' },
-                { text: 'Delete', style: 'destructive', onPress: () => { deleteRecipe(recipeId!); navigation.navigate('Home'); } },
+                { text: 'Delete', style: 'destructive', onPress: async () => { try { await deleteRecipeMutation({ variables: { id: recipeId! } }); navigation.navigate('Home'); } catch (e) { Alert.alert('Error', (e as Error).message); } } },
               ]);
             }}
             pressStyle={{
@@ -495,9 +512,6 @@ export const AddRecipeScreen: React.FC = () => {
       contentContainerStyle={{ paddingBottom: 80, flexGrow: 1 }}
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="on-drag"
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
-      }
     >
       <Content />
     </ScrollView>
