@@ -6,7 +6,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from 'tamagui';
 import { NoteCard } from '../../components/recipe/NoteCard';
 import { EmptyState } from '../../components/common/EmptyState';
-import { recipes, getNotesByRecipe, addNote, toggleFavorite } from '../../utils/dummyData';
+import { recipes, getNotesByRecipe, addNote, toggleFavorite, updateNote } from '../../utils/dummyData';
 
 type RouteParams = {
   recipeId: string;
@@ -32,6 +32,8 @@ export const RecipeDetailScreen: React.FC = () => {
   const [notes, setNotes] = useState(getNotesByRecipe(recipeId));
   const [recipe, setRecipe] = useState(recipes.find((r) => r.id === recipeId));
   const [refreshing, setRefreshing] = useState(false);
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [editingNoteContent, setEditingNoteContent] = useState('');
 
   useEffect(() => {
     if (!recipe) {
@@ -50,6 +52,23 @@ export const RecipeDetailScreen: React.FC = () => {
       setNotes([...notes, addedNote]);
       setNewNote('');
     }
+  };
+
+  const handleStartEditNote = (noteId: string) => {
+    const n = notes.find(n => n.id === noteId);
+    if (!n) return;
+    setEditingNoteId(noteId);
+    setEditingNoteContent(n.content);
+  };
+
+  const handleSaveEditNote = () => {
+    if (!editingNoteId) return;
+    const updated = updateNote(editingNoteId, editingNoteContent.trim());
+    if (updated) {
+      setNotes(notes.map(n => (n.id === updated.id ? updated : n)));
+    }
+    setEditingNoteId(null);
+    setEditingNoteContent('');
   };
 
   const handleDeleteNote = (noteId: string) => {
@@ -228,7 +247,29 @@ export const RecipeDetailScreen: React.FC = () => {
           ) : (
             <YStack padding="$3">
               {notes.map((note) => (
-                <NoteCard key={note.id} note={note} onDelete={handleDeleteNote} />
+                <YStack key={note.id} space="$2">
+                  {editingNoteId === note.id ? (
+                    <YStack space="$2">
+                      <Input
+                        value={editingNoteContent}
+                        onChangeText={setEditingNoteContent}
+                        multiline
+                        numberOfLines={3}
+                      />
+                      <XStack space="$2">
+                        <Button onPress={handleSaveEditNote}>Save</Button>
+                        <Button backgroundColor={theme.gray8.val} onPress={() => { setEditingNoteId(null); setEditingNoteContent(''); }}>Cancel</Button>
+                      </XStack>
+                    </YStack>
+                  ) : (
+                    <NoteCard note={note} onDelete={handleDeleteNote} />
+                  )}
+                  {editingNoteId !== note.id && (
+                    <XStack>
+                      <Button size="$3" onPress={() => handleStartEditNote(note.id)}>Edit</Button>
+                    </XStack>
+                  )}
+                </YStack>
               ))}
             </YStack>
           )}

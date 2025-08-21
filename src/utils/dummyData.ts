@@ -255,6 +255,10 @@ export const getRecipesByCategory = (categoryId: string): Recipe[] => {
   return recipes.filter(recipe => recipe.categoryId === categoryId);
 };
 
+export const getRecipeById = (recipeId: string): Recipe | undefined => {
+  return recipes.find(r => r.id === recipeId);
+};
+
 export const getNotesByRecipe = (recipeId: string): Note[] => {
   return notes.filter(note => note.recipeId === recipeId);
 };
@@ -276,4 +280,54 @@ export const addNote = (recipeId: string, content: string): Note => {
   };
   notes.push(newNote);
   return newNote;
+};
+
+export const updateNote = (noteId: string, content: string): Note | undefined => {
+  const idx = notes.findIndex(n => n.id === noteId);
+  if (idx !== -1) {
+    notes[idx] = { ...notes[idx], content, timestamp: new Date() };
+    return notes[idx];
+  }
+  return undefined;
+};
+
+export const deleteNote = (noteId: string): boolean => {
+  const idx = notes.findIndex(n => n.id === noteId);
+  if (idx !== -1) {
+    notes.splice(idx, 1);
+    return true;
+  }
+  return false;
+};
+
+export const addRecipe = (data: Omit<Recipe, 'id' | 'isFavorite' | 'category'> & { categoryId: string; title: string }): Recipe => {
+  const category = categories.find(c => c.id === data.categoryId)?.name || '';
+  const newRecipe: Recipe = {
+    ...data,
+    id: Date.now().toString(),
+    isFavorite: false,
+    category,
+  } as Recipe;
+  recipes.push(newRecipe);
+  return newRecipe;
+};
+
+export const updateRecipe = (recipeId: string, changes: Partial<Omit<Recipe, 'id'>> & { categoryId?: string }): Recipe | undefined => {
+  const idx = recipes.findIndex(r => r.id === recipeId);
+  if (idx === -1) return undefined;
+  const current = recipes[idx];
+  const nextCategoryId = changes.categoryId ?? current.categoryId;
+  const nextCategory = categories.find(c => c.id === nextCategoryId)?.name || current.category;
+  const updated: Recipe = { ...current, ...changes, categoryId: nextCategoryId, category: nextCategory } as Recipe;
+  recipes[idx] = updated;
+  return updated;
+};
+
+export const deleteRecipe = (recipeId: string): boolean => {
+  const idx = recipes.findIndex(r => r.id === recipeId);
+  if (idx !== -1) {
+    recipes.splice(idx, 1);
+    return true;
+  }
+  return false;
 };

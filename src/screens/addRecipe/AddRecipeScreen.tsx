@@ -13,9 +13,9 @@ import {
   Select,
 } from 'tamagui';
 import { Plus, Minus, ArrowLeft, Save, Image as ImageIcon } from '@tamagui/lucide-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from 'tamagui';
-import { categories } from '../../utils/dummyData';
+import { categories, getRecipeById, addRecipe, updateRecipe, deleteRecipe } from '../../utils/dummyData';
 
 type RootStackParamList = {
   Home: undefined;
@@ -29,15 +29,34 @@ type NavigationProp = {
 export const AddRecipeScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const theme = useTheme();
+  const route = useRoute();
+  const params = (route.params || {}) as { recipeId?: string };
+  const recipeId = params.recipeId;
   
   const [title, setTitle] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
-  const [ingredients, setIngredients] = useState(['']);
-  const [steps, setSteps] = useState(['']);
+  const [ingredients, setIngredients] = useState<string[]>(['']);
+  const [steps, setSteps] = useState<string[]>(['']);
   const [prepTime, setPrepTime] = useState('');
   const [cookTime, setCookTime] = useState('');
   const [servings, setServings] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+
+  const isEditing = !!recipeId;
+
+  React.useEffect(() => {
+    if (!isEditing) return;
+    const recipe = getRecipeById(recipeId!);
+    if (recipe) {
+      setTitle(recipe.title);
+      setSelectedCategory(recipe.categoryId);
+      setIngredients(recipe.ingredients);
+      setSteps(recipe.steps);
+      setPrepTime(String(recipe.prepTime));
+      setCookTime(String(recipe.cookTime));
+      setServings(String(recipe.servings));
+    }
+  }, [isEditing, recipeId]);
 
   const addIngredient = () => {
     setIngredients([...ingredients, '']);
@@ -97,10 +116,27 @@ export const AddRecipeScreen: React.FC = () => {
       return;
     }
 
-    // Here you would typically save to your data source
+    const payload = {
+      title: title.trim(),
+      categoryId: selectedCategory,
+      image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop',
+      ingredients: ingredients.map(i => i.trim()),
+      steps: steps.map(s => s.trim()),
+      prepTime: parseInt(prepTime || '0', 10) || 0,
+      cookTime: parseInt(cookTime || '0', 10) || 0,
+      servings: parseInt(servings || '0', 10) || 0,
+      difficulty: 'Easy' as const,
+    };
+
+    if (isEditing) {
+      updateRecipe(recipeId!, payload);
+    } else {
+      addRecipe(payload);
+    }
+
     Alert.alert(
       'Success!',
-      'Recipe saved successfully!',
+      isEditing ? 'Recipe updated successfully!' : 'Recipe added successfully!',
       [
         {
           text: 'OK',
@@ -133,7 +169,7 @@ export const AddRecipeScreen: React.FC = () => {
             <ArrowLeft size={24} color={theme.color.val} />
           </Button>
           
-          <H1 fontSize="$4" color={theme.color.val}>Add New Recipe</H1>
+          <H1 fontSize="$4" color={theme.color.val}>{isEditing ? 'Edit Recipe' : 'Add New Recipe'}</H1>
         </XStack>
 
         {/* Recipe Image Placeholder */}
@@ -176,17 +212,41 @@ export const AddRecipeScreen: React.FC = () => {
             color={theme.color.val}
           />
 
-          <Select native={Platform.OS === 'web'} value={selectedCategory} onValueChange={setSelectedCategory}>
-            <Select.Trigger
-              backgroundColor={theme.backgroundHover.val}
-              borderColor={theme.borderColor.val}
-              borderRadius="$4"
-              paddingHorizontal="$3"
-              paddingVertical="$2"
+          {Platform.OS === 'web' ? (
+            // Plain HTML select for web to ensure correct rendering and no portals
+            // @ts-ignore - using native HTML element on web
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory((e.target as HTMLSelectElement).value)}
+              style={{
+                width: '100%',
+                padding: 10,
+                borderRadius: 8,
+                backgroundColor: theme.backgroundHover.val,
+                border: `1px solid ${theme.borderColor.val}`,
+                color: theme.color.val,
+              }}
             >
-              <Select.Value placeholder="Select Category" />
-            </Select.Trigger>
-            {Platform.OS !== 'web' && (
+              <option value="" disabled>
+                Select Category
+              </option>
+              {categories.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.name}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+              <Select.Trigger
+                backgroundColor={theme.backgroundHover.val}
+                borderColor={theme.borderColor.val}
+                borderRadius="$4"
+                paddingHorizontal="$3"
+                paddingVertical="$2"
+              >
+                <Select.Value placeholder="Select Category" />
+              </Select.Trigger>
               <Select.Content>
                 <Select.Viewport>
                   {categories.map((cat, index) => (
@@ -196,8 +256,8 @@ export const AddRecipeScreen: React.FC = () => {
                   ))}
                 </Select.Viewport>
               </Select.Content>
-            )}
-          </Select>
+            </Select>
+          )}
 
           <XStack space="$3">
             <Input
@@ -377,7 +437,7 @@ export const AddRecipeScreen: React.FC = () => {
           </YStack>
         </YStack>
 
-        {/* Save Button */}
+        {/* Save / Delete Buttons */}
         <Button
           size="$5"
           backgroundColor={isValid ? theme.blue10.val : theme.gray8.val}
@@ -393,8 +453,31 @@ export const AddRecipeScreen: React.FC = () => {
           animation="quick"
         >
           <Save size={20} color="white" marginRight="$2" />
-          Save Recipe
+          {isEditing ? 'Update Recipe' : 'Save Recipe'}
         </Button>
+
+        {isEditing && (
+          <Button
+            size="$5"
+            backgroundColor={theme.red10.val}
+            color="white"
+            borderRadius="$4"
+            paddingVertical="$3"
+            onPress={() => {
+              Alert.alert('Delete Recipe', 'Are you sure you want to delete this recipe?', [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Delete', style: 'destructive', onPress: () => { deleteRecipe(recipeId!); navigation.navigate('Home'); } },
+              ]);
+            }}
+            pressStyle={{
+              scale: 0.95,
+              backgroundColor: theme.red9.val,
+            }}
+            animation="quick"
+          >
+            Delete Recipe
+          </Button>
+        )}
       </YStack>
   );
 
