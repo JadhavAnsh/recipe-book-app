@@ -86,6 +86,84 @@ The app supports deep linking with the following schemes:
    npm start
    ```
 
+## 🧰 Prerequisites
+
+- Node.js 18+ and npm
+- Expo CLI (optional, auto-installed via `npx expo`)
+- EAS CLI (optional, for cloud builds): `npm i -g eas-cli`
+
+## ⚙️ Environment & API URL
+
+The app talks to a backend API. By default it will try to discover your dev machine host or fall back to sensible emulator defaults.
+
+- Default dev port: `3000`
+- Config location: `src/config/api.ts`
+- GraphQL client: `src/config/apollo.ts` → uses `${API_BASE_URL}/graphql`
+
+You can override the API base URL in two ways:
+
+1) app.json (recommended)
+   - `expo.extra.apiBaseUrl` is read at runtime. Example already set for production:
+   ```json
+   {
+     "expo": {
+       "extra": {
+         "apiBaseUrl": "https://recipe-book-app-backend.onrender.com"
+       }
+     }
+   }
+   ```
+
+2) Environment variable (for local/dev)
+   - Use `EXPO_PUBLIC_API_BASE_URL` when starting Expo:
+   - macOS/Linux:
+   ```bash
+   EXPO_PUBLIC_API_BASE_URL=http://192.168.1.10:3000 npm start
+   ```
+   - Windows (PowerShell):
+   ```powershell
+   $env:EXPO_PUBLIC_API_BASE_URL="http://192.168.1.10:3000"; npm start
+   ```
+   - Windows (cmd.exe):
+   ```bat
+   set EXPO_PUBLIC_API_BASE_URL=http://192.168.1.10:3000 && npm start
+   ```
+
+If neither is provided, the app will:
+- Try to derive the host from Expo dev server
+- Android emulator fallback: `http://10.0.2.2:3000`
+- iOS simulator/web fallback: `http://localhost:3000`
+
+## 🧪 Running on Emulator/Device
+
+- Android Emulator: no extra config needed (uses `10.0.2.2` fallback if not derived)
+- iOS Simulator: backend on the same machine is available at `http://localhost:3000`
+- Physical devices: set `EXPO_PUBLIC_API_BASE_URL` to your computer’s LAN IP (e.g., `http://192.168.1.10:3000`) or update `expo.extra.apiBaseUrl` in `app.json`.
+
+If you see CORS errors in web, ensure the backend `WEB_ORIGIN` includes the Expo dev origin (see backend README).
+
+## 🧭 Scripts
+
+```bash
+npm start            # Start Expo (dev client)
+npm run android      # Build & run on Android emulator/device
+npm run ios          # Build & run on iOS simulator/device
+npm run web          # Run web preview
+npm run lint         # Lint
+npm run format       # Lint + format with fixes
+```
+
+## 📦 Building with EAS
+
+```bash
+eas login
+eas build --profile development  # dev build
+eas build --profile preview      # preview build
+eas build --profile production   # production build
+```
+
+Make sure any required env vars (e.g., `EXPO_PUBLIC_API_BASE_URL`) are configured as EAS Secrets for cloud builds.
+
 ## 🏗️ Project Structure
 
 ```
@@ -156,6 +234,3 @@ Reusable component for showing friendly empty states throughout the app.
 
 This project is open source and available under the [MIT License](LICENSE).
 
----
-
-Built with ❤️ using React Native, Expo, and Tamagui
