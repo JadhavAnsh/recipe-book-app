@@ -13,17 +13,19 @@ import {
 import { Moon, Sun, Heart, BookOpen, Settings, Info } from '@tamagui/lucide-icons';
 import { useTheme } from 'tamagui';
 import { useAppTheme } from '../../context/ThemeContext';
-import { recipes, categories, notes } from '../../utils/dummyData';
+import { categories } from '../../utils/dummyData';
+import { useRecipeCounts } from '../../hooks/useRecipeCounts';
 
 export const ProfileScreen: React.FC = () => {
   const theme = useTheme();
   const { isDark, toggleTheme } = useAppTheme();
+  const { totalRecipes } = useRecipeCounts();
 
   const stats = {
-    totalRecipes: recipes.length,
+    totalRecipes,
     totalCategories: categories.length,
-    totalNotes: notes.length,
-    favoriteRecipes: recipes.filter(r => r.isFavorite).length,
+    totalNotes: 0,
+    favoriteRecipes: 0,
   };
 
   return (

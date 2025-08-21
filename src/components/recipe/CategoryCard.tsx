@@ -6,11 +6,13 @@ import { useTheme } from 'tamagui';
 interface CategoryCardProps {
   category: Category;
   onPress: () => void;
+  count?: number;
 }
 
 export const CategoryCard: React.FC<CategoryCardProps> = ({
   category,
   onPress,
+  count,
 }) => {
   const theme = useTheme();
 
@@ -51,7 +53,7 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({
               opacity={0.7}
               textAlign="center"
             >
-              {category.recipeCount} recipe{category.recipeCount !== 1 ? 's' : ''}
+              {(count ?? category.recipeCount)} recipe{(count ?? category.recipeCount) !== 1 ? 's' : ''}
             </Text>
           </YStack>
         </YStack>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { ScrollView } from 'react-native';
 import {
   YStack,
@@ -17,6 +17,9 @@ import {
   getRecipesByCategory,
   toggleFavorite,
 } from '../../utils/dummyData';
+import { useRecipeCounts } from '../../hooks/useRecipeCounts';
+import { useQuery } from '@apollo/client';
+import { RECIPES_BY_CATEGORY_QUERY } from '../../services/api/recipes';
 
 type RootStackParamList = {
   RecipeDetail: { recipeId: string };
@@ -32,6 +35,11 @@ export const CategoriesScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const theme = useTheme();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const { countsByCategoryId } = useRecipeCounts();
+  const { data: selectedData, loading: selectedLoading } = useQuery(RECIPES_BY_CATEGORY_QUERY, {
+    skip: !selectedCategory,
+    variables: { categoryId: selectedCategory as string },
+  });
 
   const handleCategoryPress = (categoryId: string) => {
     if (selectedCategory === categoryId) {
@@ -55,9 +63,11 @@ export const CategoriesScreen: React.FC = () => {
     ? categories.find(c => c.id === selectedCategory)
     : null;
 
-  const selectedCategoryRecipes = selectedCategory 
-    ? getRecipesByCategory(selectedCategory)
-    : [];
+  const selectedCategoryRecipes = useMemo(() => {
+    if (!selectedCategory) return [] as any[];
+    const list = (selectedData?.recipesByCategory ?? []) as any[];
+    return list;
+  }, [selectedCategory, selectedData]);
 
   return (
     <ScrollView
@@ -84,6 +94,7 @@ export const CategoriesScreen: React.FC = () => {
               <CategoryCard
                 key={category.id}
                 category={category}
+                count={countsByCategoryId[category.id]}
                 onPress={() => handleCategoryPress(category.id)}
               />
             ))}

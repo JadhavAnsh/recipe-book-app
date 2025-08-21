@@ -21,8 +21,9 @@ import {
   Recipe as UIRecipe,
 } from '../../utils/dummyData';
 import { useQuery } from '@apollo/client';
-import { RECIPES_QUERY } from '../../services/api/recipes';
+import { RECIPES_QUERY, RECIPES_BY_CATEGORY_QUERY } from '../../services/api/recipes';
 import { useDebouncedValue } from '~/utils/useDebouncedValue';
+import { useRecipeCounts } from '../../hooks/useRecipeCounts';
 
 type RootStackParamList = {
   RecipeDetail: { recipeId: string };
@@ -41,7 +42,13 @@ export const HomeScreen: React.FC = () => {
   const [refreshTick, setRefreshTick] = useState(0);
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
 
-  const { data, loading } = useQuery(RECIPES_QUERY);
+  const { data, loading } = useQuery(RECIPES_QUERY, { skip: !!selectedCategory });
+  const { data: byCatData, loading: byCatLoading } = useQuery(RECIPES_BY_CATEGORY_QUERY, {
+    skip: !selectedCategory,
+    variables: { categoryId: selectedCategory as string },
+  });
+
+  const { countsByCategoryId } = useRecipeCounts();
   const apiRecipes = (data?.recipes ?? []) as Array<{
     id: string;
     title: string;
@@ -55,8 +62,11 @@ export const HomeScreen: React.FC = () => {
     servings: number;
   }>;
 
+  const byCatRecipes = (byCatData?.recipesByCategory ?? []) as typeof apiRecipes;
+
   const uiRecipes: UIRecipe[] = useMemo(() => {
-    return apiRecipes.map((r) => ({
+    const list = selectedCategory ? byCatRecipes : apiRecipes;
+    return list.map((r) => ({
       id: r.id,
       title: r.title,
       category: r.category,
@@ -71,7 +81,7 @@ export const HomeScreen: React.FC = () => {
       isFavorite: favoriteIds.has(r.id),
     }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [apiRecipes, favoriteIds, refreshTick]);
+  }, [apiRecipes, byCatRecipes, selectedCategory, favoriteIds, refreshTick]);
 
   const debouncedSearch = useDebouncedValue(searchQuery, 200);
 
@@ -183,6 +193,7 @@ export const HomeScreen: React.FC = () => {
                 <CategoryCard
                   key={category.id}
                   category={category}
+                  count={countsByCategoryId[category.id]}
                   onPress={() => handleCategoryPress(category.id)}
                 />
               ))}
@@ -220,7 +231,7 @@ export const HomeScreen: React.FC = () => {
             )}
           </XStack>
 
-          {loading ? (
+          {(selectedCategory ? byCatLoading : loading) ? (
             <Text color={theme.color.val}>Loading recipes...</Text>
           ) : filteredRecipes.length === 0 ? (
             <EmptyState

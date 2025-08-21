@@ -76,5 +76,22 @@ export const DELETE_RECIPE_MUTATION = gql`
   }
 `;
 
+export const RECIPES_BY_CATEGORY_QUERY = gql`
+  query RecipesByCategory($categoryId: ID!) {
+    recipesByCategory(categoryId: $categoryId) {
+      id
+      title
+      category
+      categoryId
+      image
+      ingredients
+      steps
+      prepTime
+      cookTime
+      servings
+    }
+  }
+`;
+
 
 
